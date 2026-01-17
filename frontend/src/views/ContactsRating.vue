@@ -590,7 +590,7 @@ const save = async () => {
                       ></v-rating>
                       <span v-else class="text-grey">No ratings yet</span>
                       <div class="text-caption text-grey mt-1">
-                        Based on {{ userRating || 0 }} ratings
+                        Based on {{ selectedContact?.rating_count || 0 }} ratings
                       </div>
                     </div>
                     <v-btn color="amber" @click="openRatingDialog(selectedContact)" prepend-icon="mdi-star">

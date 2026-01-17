@@ -110,8 +110,61 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
-
+# views.py - Update RatingViewSet
 class RatingViewSet(viewsets.ModelViewSet):
+    queryset = Rating.objects.all()
+    serializer_class = RatingSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to check for duplicate ratings before serializer validation
+        """
+        contact_id = request.data.get('contact')
+        
+        # Check if user already rated this contact
+        if contact_id:
+            existing_rating = Rating.objects.filter(
+                contact_id=contact_id,
+                user=request.user
+            ).first()
+            
+            if existing_rating:
+                # Return existing rating with 200 OK (or 400 if you prefer)
+                serializer = self.get_serializer(existing_rating)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        # No existing rating, proceed with normal creation
+        return super().create(request, *args, **kwargs)
+    
+    def perform_create(self, serializer):
+        """Automatically set the user"""
+        serializer.save(user=self.request.user)
+    
+    def perform_update(self, serializer):
+        """Ensure users can only update their own ratings"""
+        instance = self.get_object()
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only update your own ratings.")
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        """Ensure users can only delete their own ratings"""
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can only delete your own ratings.")
+        instance.delete()
+    
+    def get_queryset(self):
+        queryset = Rating.objects.all()
+        
+        contact_id = self.request.query_params.get('contact')
+        if contact_id:
+            queryset = queryset.filter(contact_id=contact_id)
+        
+        if self.request.query_params.get('my_ratings') == 'true':
+            queryset = queryset.filter(user=self.request.user)
+        
+        return queryset
     queryset = Rating.objects.all()
     serializer_class = RatingSerializer
     permission_classes = [IsAuthenticated]
